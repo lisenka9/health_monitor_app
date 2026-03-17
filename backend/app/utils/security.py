@@ -2,14 +2,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 import hashlib
-import secrets
 from app.config import settings
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return get_password_hash(plain_password) == hashed_password
 
 def get_password_hash(password: str) -> str:
-    salt = "health_monitor_salt_2024"
+    salt = settings.PASSWORD_SALT
     return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

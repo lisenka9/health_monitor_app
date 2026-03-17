@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: health-monitor-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-healthuser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-healthpass}
+      - POSTGRES_DB=${POSTGRES_DB:-healthdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthuser -d healthdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    #container_name: health-monitor-backend
+    #ports:
+      #- "8000:8000"
+    expose:
+      - "8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - DATABASE_URL=${DATABASE_URL}
+      - PASSWORD_SALT=${PASSWORD_SALT}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: health-monitor-frontend
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost}
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+
+networks:
+  health-monitor-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_data:
