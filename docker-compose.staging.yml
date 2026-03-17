@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ghcr.io/lisenka9/health-monitor-backend:latest
+    environment:
+      - ENVIRONMENT=staging
+      - IMAGE_VERSION=${IMAGE_VERSION:-latest}
+      - COMMIT_HASH=${COMMIT_HASH:-unknown}
+    env_file:
+      - .env.staging
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/lisenka9/health-monitor-frontend:latest
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost
+      - ENVIRONMENT=staging
+    env_file:
+      - .env.staging
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-healthuser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-healthpass}
+      - POSTGRES_DB=${POSTGRES_DB:-healthdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
+
+networks:
+  health-monitor-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

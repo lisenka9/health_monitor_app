@@ -6,6 +6,10 @@ from app.api.routes import analytics as analytics_routes
 from app.database import engine, Base, init_db
 from app.models import user, measurement, wellness
 import logging
+import subprocess
+import os
+import socket
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +26,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+@app.on_event("startup")
+async def log_version():
+    image_version = os.getenv("IMAGE_VERSION", "unknown")
+    commit_hash = os.getenv("COMMIT_HASH", "unknown")
+    environment = os.getenv("ENVIRONMENT", "development")
+    
+    logger.info(f"Starting application - Environment: {environment}, Image: {image_version}, Commit: {commit_hash}")
+    
 @app.middleware("http")
 async def log_requests(request, call_next):
     logger.info(f"Request: {request.method} {request.url.path}")
@@ -55,4 +67,11 @@ def debug_config():
         "cors_origins": settings.CORS_ORIGINS,
         "database_url": settings.DATABASE_URL,
         "password_salt_preview": settings.PASSWORD_SALT[:10] + "..."
+    }
+
+@app.get("/debug/instance")
+def get_instance():
+    return {
+        "hostname": socket.gethostname(),
+        "container_id": socket.gethostname()
     }

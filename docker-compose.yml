@@ -20,8 +20,7 @@ services:
   backend:
     build: ./backend
     #container_name: health-monitor-backend
-    #ports:
-      #- "8000:8000"
+    
     expose:
       - "8000"
     environment:
@@ -31,6 +30,9 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       - DATABASE_URL=${DATABASE_URL}
       - PASSWORD_SALT=${PASSWORD_SALT}
+      - IMAGE_VERSION=${IMAGE_VERSION:-latest}
+      - COMMIT_HASH=${COMMIT_HASH:-unknown}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
     env_file:
       - .env
     depends_on:
@@ -39,18 +41,31 @@ services:
     networks:
       - health-monitor-network
     restart: unless-stopped
+  
+  load-balancer:
+    image: nginx:alpine
+    container_name: health-monitor-lb
+    ports:
+      - "80:80" 
+    volumes:
+      - ./nginx-loadbalancer.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - health-monitor-network
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
     container_name: health-monitor-frontend
     ports:
-      - "80:80"
+      - "8080:80"
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost}
     env_file:
       - .env
     depends_on:
-      - backend
+      - load-balancer
     networks:
       - health-monitor-network
     restart: unless-stopped
