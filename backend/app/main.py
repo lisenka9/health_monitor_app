@@ -3,43 +3,106 @@ from app.api.middleware import add_cors_middleware
 from app.api.routes import auth, users, measurements
 from app.api.routes import wellness as wellness_routes
 from app.api.routes import analytics as analytics_routes
-from app.database import engine, Base, init_db
-from app.models import user, measurement, wellness
-import logging
-import subprocess
+from app.database import init_db
 import os
 import socket
+import uuid
+import structlog
+import asyncio
+import signal
+from contextlib import asynccontextmanager
+from app.core.logging import setup_logging, get_logger
 
+setup_logging()
+logger = get_logger("health-monitor")
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+shutdown_event = asyncio.Event()
 
-logger.info("Инициализация базы данных...")
-init_db()
-logger.info("База данных готова")
+def handle_signal(signum, frame):
+    """Обработчик сигналов SIGTERM и SIGINT"""
+    logger.info("received_signal", signal=signum, message="Shutting down gracefully...")
+    shutdown_event.set()
+
+signal.signal(signal.SIGTERM, handle_signal)
+signal.signal(signal.SIGINT, handle_signal)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("application_starting")
+    
+    logger.info("database_initializing")
+    init_db()
+    logger.info("database_ready")
+    
+    image_version = os.getenv("IMAGE_VERSION", "unknown")
+    commit_hash = os.getenv("COMMIT_HASH", "unknown")
+    environment = os.getenv("ENVIRONMENT", "development")
+    logger.info("application_started",
+                environment=environment,
+                image_version=image_version,
+                commit_hash=commit_hash)
+    
+    yield
+    
+    logger.info("application_shutting_down")
+    
+    try:
+        await asyncio.wait_for(shutdown_event.wait(), timeout=30.0)
+    except asyncio.TimeoutError:
+        logger.warning("shutdown_timeout", message="Forced shutdown after timeout")
+    
+    from app.database import engine
+    engine.dispose()
+    logger.info("database_connections_closed")
+    
+    logger.info("application_shutdown_complete")
 
 app = FastAPI(
     title="Health Monitor API",
     description="API для мониторинга здоровья и ведения медицинских записей",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
-@app.on_event("startup")
-async def log_version():
-    image_version = os.getenv("IMAGE_VERSION", "unknown")
-    commit_hash = os.getenv("COMMIT_HASH", "unknown")
-    environment = os.getenv("ENVIRONMENT", "development")
-    
-    logger.info(f"Starting application - Environment: {environment}, Image: {image_version}, Commit: {commit_hash}")
-    
 @app.middleware("http")
-async def log_requests(request, call_next):
-    logger.info(f"Request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
-    return response
+async def log_requests_middleware(request, call_next):
+    if shutdown_event.is_set():
+        from fastapi.responses import JSONResponse
+        logger.warning("request_rejected", 
+                       method=request.method,
+                       path=request.url.path,
+                       reason="shutting_down")
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Service is shutting down, please try again later"}
+        )
+    
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    
+    logger.info("request_started", 
+                method=request.method,
+                path=request.url.path,
+                client=request.client.host if request.client else "unknown")
+    
+    try:
+        response = await call_next(request)
+        logger.info("request_completed",
+                    method=request.method,
+                    path=request.url.path,
+                    status_code=response.status_code)
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        logger.error("request_failed",
+                     method=request.method,
+                     path=request.url.path,
+                     error=str(e))
+        raise
+    finally:
+        structlog.contextvars.clear_contextvars()
 
 add_cors_middleware(app)
 
@@ -75,3 +138,11 @@ def get_instance():
         "hostname": socket.gethostname(),
         "container_id": socket.gethostname()
     }
+
+@app.get("/debug/sleep")
+async def sleep_test(seconds: int = 10):
+    """Тестовый эндпоинт для проверки graceful shutdown"""
+    logger.info("sleep_started", seconds=seconds)
+    await asyncio.sleep(seconds)
+    logger.info("sleep_completed")
+    return {"status": "ok", "slept": seconds}

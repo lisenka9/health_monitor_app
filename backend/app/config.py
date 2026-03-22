@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     @property
     def CORS_ORIGINS(self) -> List[str]:
-        cors_origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:80,http://localhost:3000")
+        cors_origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:80,http://localhost:3000,http://localhost:8080")
         return [origin.strip() for origin in cors_origins.split(",")]
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////app/data/health_monitor.db")
     PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "health_monitor_salt_2026")
