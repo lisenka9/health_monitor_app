@@ -65,15 +65,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-staging:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Run migrations on staging
-        run: |
-          docker run --rm \
-            -e DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}" \
-            -e SECRET_KEY="${{ secrets.STAGING_SECRET_KEY }}" \
-            ghcr.io/${{ github.repository_owner }}/health-monitor-backend:${{ github.sha }} \
-            migrate
+  
