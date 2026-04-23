@@ -36,6 +36,4 @@
 
 4.  **Проверьте работоспособность:**
 
-Frontend: http://localhost:8080
-
-API Docs: http://localhost:8000/docs
+http://localhost:8080
