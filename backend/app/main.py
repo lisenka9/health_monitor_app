@@ -34,7 +34,6 @@ def custom_openapi():
             "bearerFormat": "JWT"
         }
     }
-    # Применяем эту аутентификацию ко всем эндпоинтам (кроме /auth, /docs, /openapi.json, /health)
     for path in openapi_schema["paths"]:
         for method in openapi_schema["paths"][path]:
             # Пропускаем пути, которые не требуют авторизации
@@ -145,8 +144,8 @@ app.include_router(wellness_routes.router)
 app.include_router(analytics_routes.router)
 
 @app.get("/")
-def read_root():
-    return {"message": "Health Monitor API is running!"}
+def root():
+    return {"status": "ok", "message": "Backend is running"}
 
 @app.get("/health")
 def health_check():
