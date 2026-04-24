@@ -15,10 +15,46 @@ from app.core.logging import setup_logging, get_logger
 from fastapi.security import HTTPBearer
 from fastapi.openapi.utils import get_openapi
 
+setup_logging()
+logger = get_logger("health-monitor")
+
+shutdown_event = asyncio.Event()
 security_scheme = HTTPBearer()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("application_starting")
+    
+    logger.info("database_initializing")
+    init_db()
+    logger.info("database_ready")
+    
+    image_version = os.getenv("IMAGE_VERSION", "unknown")
+    commit_hash = os.getenv("COMMIT_HASH", "unknown")
+    environment = os.getenv("ENVIRONMENT", "development")
+    logger.info("application_started",
+                environment=environment,
+                image_version=image_version,
+                commit_hash=commit_hash)
+    
+    yield
+    
+    logger.info("application_shutting_down")
+    
+    try:
+        await asyncio.wait_for(shutdown_event.wait(), timeout=30.0)
+    except asyncio.TimeoutError:
+        logger.warning("shutdown_timeout", message="Forced shutdown after timeout")
+    
+    from app.database import engine
+    engine.dispose()
+    logger.info("database_connections_closed")
+    
+    logger.info("application_shutdown_complete")
+
 app = FastAPI(
     title="Health Monitor API",
-    description="API для мониторинга здоровья и ведения медицинских записей",
+    description="API для управления медицинскими данными",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -51,10 +87,7 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 security = HTTPBearer(auto_error=False)
-setup_logging()
-logger = get_logger("health-monitor")
 
-shutdown_event = asyncio.Event()
 
 def handle_signal(signum, frame):
     """Обработчик сигналов SIGTERM и SIGINT"""
@@ -64,36 +97,6 @@ def handle_signal(signum, frame):
 signal.signal(signal.SIGTERM, handle_signal)
 signal.signal(signal.SIGINT, handle_signal)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("application_starting")
-    
-    logger.info("database_initializing")
-    init_db()
-    logger.info("database_ready")
-    
-    image_version = os.getenv("IMAGE_VERSION", "unknown")
-    commit_hash = os.getenv("COMMIT_HASH", "unknown")
-    environment = os.getenv("ENVIRONMENT", "development")
-    logger.info("application_started",
-                environment=environment,
-                image_version=image_version,
-                commit_hash=commit_hash)
-    
-    yield
-    
-    logger.info("application_shutting_down")
-    
-    try:
-        await asyncio.wait_for(shutdown_event.wait(), timeout=30.0)
-    except asyncio.TimeoutError:
-        logger.warning("shutdown_timeout", message="Forced shutdown after timeout")
-    
-    from app.database import engine
-    engine.dispose()
-    logger.info("database_connections_closed")
-    
-    logger.info("application_shutdown_complete")
 
 
 @app.middleware("http")
