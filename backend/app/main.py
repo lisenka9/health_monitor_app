@@ -12,7 +12,39 @@ import asyncio
 import signal
 from contextlib import asynccontextmanager
 from app.core.logging import setup_logging, get_logger
+from fastapi.security import HTTPBearer
+from fastapi.openapi.utils import get_openapi
 
+security_scheme = HTTPBearer()
+app = FastAPI(...)
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+    # Применяем эту аутентификацию ко всем эндпоинтам (кроме /auth, /docs, /openapi.json, /health)
+    for path in openapi_schema["paths"]:
+        for method in openapi_schema["paths"][path]:
+            # Пропускаем пути, которые не требуют авторизации
+            if not path.startswith("/auth") and path not in ["/", "/health", "/openapi.json", "/docs", "/redoc"]:
+                openapi_schema["paths"][path][method]["security"] = [{"Bearer": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+security = HTTPBearer(auto_error=False)
 setup_logging()
 logger = get_logger("health-monitor")
 
