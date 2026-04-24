@@ -314,6 +314,14 @@ def update_glucose(glucose_id: int, data: BloodGlucoseCreate, current_user: User
     db.refresh(item)
     return item
 
+@app.delete("/api/blood-glucose/{glucose_id}", status_code=204)
+def delete_glucose(glucose_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(BloodGlucose).filter(BloodGlucose.id == glucose_id, BloodGlucose.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Blood glucose measurement not found")
+    db.delete(item)
+    db.commit()
+
 @app.put("/api/weight/{weight_id}", response_model=WeightResponse)
 def update_weight(weight_id: int, data: WeightCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     item = db.query(Weight).filter(Weight.id == weight_id, Weight.user_id == current_user.id).first()
@@ -325,6 +333,14 @@ def update_weight(weight_id: int, data: WeightCreate, current_user: User = Depen
     db.commit()
     db.refresh(item)
     return item
+
+@app.delete("/api/weight/{weight_id}", status_code=204)
+def delete_weight(weight_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(Weight).filter(Weight.id == weight_id, Weight.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Weight measurement not found")
+    db.delete(item)
+    db.commit()
 
 @app.put("/api/wellness/{entry_id}", response_model=WellnessEntryResponse)
 def update_wellness(entry_id: int, data: WellnessEntryCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -355,5 +371,140 @@ def get_dashboard(current_user: User = Depends(get_current_user), db: Session = 
     return {
         "latest_blood_pressure": latest_bp,
         "latest_blood_glucose": latest_glucose,
-        "latest_weight": latest_weight
+        "latest_weight": latest_weight,
+        "weekly_stats": {}
+    }
+
+@app.get("/api/analytics/measurements")
+def get_measurements(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    measurement_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not end_date:
+        end_date = datetime.utcnow().isoformat()
+    if not start_date:
+        start_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    
+    start = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+    end = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+    
+    results = []
+    
+    if not measurement_type or measurement_type == "blood_pressure":
+        bp_data = db.query(BloodPressure).filter(
+            BloodPressure.user_id == current_user.id,
+            BloodPressure.date >= start,
+            BloodPressure.date <= end
+        ).all()
+        for item in bp_data:
+            results.append({
+                "type": "blood_pressure",
+                "date": item.date.isoformat(),
+                "systolic": item.systolic,
+                "diastolic": item.diastolic,
+                "pulse": item.pulse,
+                "notes": item.notes
+            })
+    
+    if not measurement_type or measurement_type == "blood_glucose":
+        glucose_data = db.query(BloodGlucose).filter(
+            BloodGlucose.user_id == current_user.id,
+            BloodGlucose.date >= start,
+            BloodGlucose.date <= end
+        ).all()
+        for item in glucose_data:
+            results.append({
+                "type": "blood_glucose",
+                "date": item.date.isoformat(),
+                "value": item.value,
+                "unit": item.unit,
+                "notes": item.notes
+            })
+    
+    if not measurement_type or measurement_type == "weight":
+        weight_data = db.query(Weight).filter(
+            Weight.user_id == current_user.id,
+            Weight.date >= start,
+            Weight.date <= end
+        ).all()
+        for item in weight_data:
+            results.append({
+                "type": "weight",
+                "date": item.date.isoformat(),
+                "value": item.value,
+                "unit": item.unit,
+                "notes": item.notes
+            })
+    
+    results.sort(key=lambda x: x["date"])
+    
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "measurement_type": measurement_type,
+        "count": len(results),
+        "data": results
+    }
+
+@app.get("/api/analytics/stats")
+def get_stats(
+    days: int = 30,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    bp_data = db.query(BloodPressure).filter(
+        BloodPressure.user_id == current_user.id,
+        BloodPressure.date >= start_date,
+        BloodPressure.date <= end_date
+    ).all()
+    
+    systolic_values = [b.systolic for b in bp_data if b.systolic]
+    diastolic_values = [b.diastolic for b in bp_data if b.diastolic]
+    
+    glucose_data = db.query(BloodGlucose).filter(
+        BloodGlucose.user_id == current_user.id,
+        BloodGlucose.date >= start_date,
+        BloodGlucose.date <= end_date
+    ).all()
+    glucose_values = [g.value for g in glucose_data if g.value]
+    
+    # Вес
+    weight_data = db.query(Weight).filter(
+        Weight.user_id == current_user.id,
+        Weight.date >= start_date,
+        Weight.date <= end_date
+    ).all()
+    weight_values = [w.value for w in weight_data if w.value]
+    
+    return {
+        "period_days": days,
+        "stats": {
+            "blood_pressure": {
+                "avg_systolic": sum(systolic_values) / len(systolic_values) if systolic_values else None,
+                "avg_diastolic": sum(diastolic_values) / len(diastolic_values) if diastolic_values else None,
+                "min_systolic": min(systolic_values) if systolic_values else None,
+                "max_systolic": max(systolic_values) if systolic_values else None
+            },
+            "blood_glucose": {
+                "avg": sum(glucose_values) / len(glucose_values) if glucose_values else None,
+                "min": min(glucose_values) if glucose_values else None,
+                "max": max(glucose_values) if glucose_values else None
+            },
+            "weight": {
+                "avg": sum(weight_values) / len(weight_values) if weight_values else None,
+                "min": min(weight_values) if weight_values else None,
+                "max": max(weight_values) if weight_values else None
+            },
+            "wellness_entries": db.query(WellnessEntry).filter(
+                WellnessEntry.user_id == current_user.id,
+                WellnessEntry.date >= start_date,
+                WellnessEntry.date <= end_date
+            ).count()
+        }
     }
