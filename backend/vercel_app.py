@@ -289,3 +289,71 @@ def create_wellness(data: WellnessEntryCreate, current_user: User = Depends(get_
 @app.get("/api/wellness", response_model=List[WellnessEntryResponse])
 def get_wellness_history(skip: int = 0, limit: int = 100, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.query(WellnessEntry).filter(WellnessEntry.user_id == current_user.id).offset(skip).limit(limit).all()
+
+@app.put("/api/blood-pressure/{bp_id}", response_model=BloodPressureResponse)
+def update_bp(bp_id: int, data: BloodPressureCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    bp = db.query(BloodPressure).filter(BloodPressure.id == bp_id, BloodPressure.user_id == current_user.id).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Blood pressure measurement not found")
+    
+    for key, value in data.model_dump().items():
+        setattr(bp, key, value)
+    db.commit()
+    db.refresh(bp)
+    return bp
+
+@app.put("/api/blood-glucose/{glucose_id}", response_model=BloodGlucoseResponse)
+def update_glucose(glucose_id: int, data: BloodGlucoseCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(BloodGlucose).filter(BloodGlucose.id == glucose_id, BloodGlucose.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Blood glucose measurement not found")
+    
+    for key, value in data.model_dump().items():
+        setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.put("/api/weight/{weight_id}", response_model=WeightResponse)
+def update_weight(weight_id: int, data: WeightCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(Weight).filter(Weight.id == weight_id, Weight.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Weight measurement not found")
+    
+    for key, value in data.model_dump().items():
+        setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.put("/api/wellness/{entry_id}", response_model=WellnessEntryResponse)
+def update_wellness(entry_id: int, data: WellnessEntryCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(WellnessEntry).filter(WellnessEntry.id == entry_id, WellnessEntry.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Wellness entry not found")
+    
+    for key, value in data.model_dump().items():
+        setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.delete("/api/wellness/{entry_id}", status_code=204)
+def delete_wellness(entry_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    item = db.query(WellnessEntry).filter(WellnessEntry.id == entry_id, WellnessEntry.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Wellness entry not found")
+    db.delete(item)
+    db.commit()
+
+@app.get("/api/analytics/dashboard")
+def get_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    latest_bp = db.query(BloodPressure).filter(BloodPressure.user_id == current_user.id).order_by(BloodPressure.date.desc()).first()
+    latest_glucose = db.query(BloodGlucose).filter(BloodGlucose.user_id == current_user.id).order_by(BloodGlucose.date.desc()).first()
+    latest_weight = db.query(Weight).filter(Weight.user_id == current_user.id).order_by(Weight.date.desc()).first()
+    
+    return {
+        "latest_blood_pressure": latest_bp,
+        "latest_blood_glucose": latest_glucose,
+        "latest_weight": latest_weight
+    }
