@@ -16,7 +16,14 @@ from fastapi.security import HTTPBearer
 from fastapi.openapi.utils import get_openapi
 
 security_scheme = HTTPBearer()
-app = FastAPI(...)
+app = FastAPI(
+    title="Health Monitor API",
+    description="API для мониторинга здоровья и ведения медицинских записей",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan
+)
 
 def custom_openapi():
     if app.openapi_schema:
@@ -88,14 +95,6 @@ async def lifespan(app: FastAPI):
     
     logger.info("application_shutdown_complete")
 
-app = FastAPI(
-    title="Health Monitor API",
-    description="API для мониторинга здоровья и ведения медицинских записей",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan
-)
 
 @app.middleware("http")
 async def log_requests_middleware(request, call_next):
