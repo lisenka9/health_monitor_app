@@ -9,13 +9,6 @@ logger = get_logger("health-monitor.database")
 logger.info("database_initializing", url=settings.DATABASE_URL[:30] + "...")
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 connect_args = {}
-if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-    import os
-    db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
-    db_dir = os.path.dirname(db_path)
-    if db_dir and not os.path.exists(db_dir):
-        os.makedirs(db_dir, exist_ok=True)
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
