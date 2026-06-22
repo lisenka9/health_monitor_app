@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.middleware import add_cors_middleware
+from app.api.routes import admin
 from app.api.routes import auth, users, measurements
 from app.api.routes import wellness as wellness_routes
 from app.api.routes import analytics as analytics_routes
@@ -144,6 +145,7 @@ app.include_router(users.router)
 app.include_router(measurements.router)
 app.include_router(wellness_routes.router)
 app.include_router(analytics_routes.router)
+app.include_router(admin.router)
 
 @app.get("/")
 def root():

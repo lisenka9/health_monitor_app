@@ -4,13 +4,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.security import verify_token
 from app.services.user_service import user_service
+from app.models.user import User
 
 security = HTTPBearer()
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
-):
+) -> User:
     token = credentials.credentials
     email = verify_token(token)
     if email is None:
@@ -24,7 +25,17 @@ def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
+            detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+def get_current_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user

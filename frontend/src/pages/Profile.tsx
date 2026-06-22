@@ -18,6 +18,7 @@ export const ProfilePage: React.FC = () => {
     confirmPassword: ''
   });
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -41,32 +42,18 @@ export const ProfilePage: React.FC = () => {
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage('');
+    setError('');
+    setLoading(true);
     
     try {
-      // Для MVP просто обновляем локально
-      setUser(prev => prev ? {...prev, ...formData} : null);
-      setMessage('Профиль успешно обновлен');
-      setEditMode(false);
-    } catch (error) {
-      setMessage('Ошибка обновления профиля');
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage('');
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage('Пароли не совпадают');
-      return;
-    }
-    
-    try {
-      // TODO: В будущем добавить API для смены пароля
-      setMessage('Функция смены пароля будет реализована позже');
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error) {
-      setMessage('Ошибка смены пароля');
+        const response = await api.put('/users/me', formData);
+        setUser(response.data);
+        setMessage('Профиль успешно обновлен');
+        setEditMode(false);
+    } catch (err: any) {
+        setError(err.response?.data?.detail || 'Ошибка обновления профиля');
+    } finally {
+        setLoading(false);
     }
   };
 

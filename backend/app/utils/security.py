@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-import hashlib
 from app.config import settings
 import bcrypt
 
