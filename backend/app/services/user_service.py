@@ -10,16 +10,7 @@ class UserService:
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
         
-        user = User(
-            email=user_create.email,
-            hashed_password=get_password_hash(user_create.password),
-            full_name=user_create.full_name,
-            role="user"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        return user_repository.create(db, user_create)
     
     def get_user_by_email(self, db: Session, email: str) -> User:
         user = user_repository.get_by_email(db, email)
