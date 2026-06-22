@@ -3,13 +3,14 @@ from typing import Optional
 from jose import JWTError, jwt
 import hashlib
 from app.config import settings
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return get_password_hash(plain_password) == hashed_password
+import bcrypt
 
 def get_password_hash(password: str) -> str:
-    salt = settings.PASSWORD_SALT
-    return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode(), salt).decode()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
