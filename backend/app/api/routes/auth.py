@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, Token, User
@@ -10,57 +10,7 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 logger = get_logger("health-monitor.auth")
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    try:
-        body = await request.body()
-        if not body:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Request body is empty"
-            )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid request"
-        )
-    
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid JSON format"
-        )
-    
-    if "email" not in body or "password" not in body or "full_name" not in body:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email, password and full_name are required"
-        )
-    
-    if not body["email"] or not body["password"] or not body["full_name"]:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email, password and full_name cannot be empty"
-        )
-    
-    if len(body["password"]) < 6:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Password must be at least 6 characters long"
-        )
-    
-    try:
-        user_create = UserCreate(**body)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Validation error: {str(e)}"
-        )
-    
+def register(user_create: UserCreate, db: Session = Depends(get_db)):
     logger.info("user_registration_attempted", email=user_create.email)
     try:
         result = user_service.create_user(db, user_create)
@@ -76,40 +26,7 @@ async def register(
         )
 
 @router.post("/login", response_model=Token)
-async def login(
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    try:
-        body_bytes = await request.body()
-        if not body_bytes:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Request body is empty"
-            )
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid request"
-        )
-    
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid JSON format"
-        )
-    
-    try:
-        user_login = UserLogin(**body)
-    except Exception as e:
-        logger.error(f"Login parsing error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid login data"
-        )
-    
+def login(user_login: UserLogin, db: Session = Depends(get_db)):
     logger.info("user_login_attempted", email=user_login.email)
     try:
         result = auth_service.login(db, user_login)
