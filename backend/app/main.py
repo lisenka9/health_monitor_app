@@ -71,6 +71,7 @@ def custom_openapi():
         description=app.description,
         routes=app.routes,
     )
+    
     openapi_schema["components"]["securitySchemes"] = {
         "Bearer": {
             "type": "http",
@@ -78,11 +79,43 @@ def custom_openapi():
             "bearerFormat": "JWT"
         }
     }
+    
     for path in openapi_schema["paths"]:
         for method in openapi_schema["paths"][path]:
-            # Пропускаем пути, которые не требуют авторизации
+            if "responses" not in openapi_schema["paths"][path][method]:
+                openapi_schema["paths"][path][method]["responses"] = {}
+            
+            if method in ["POST", "PUT", "PATCH"]:
+                openapi_schema["paths"][path][method]["responses"]["422"] = {
+                    "description": "Validation error - invalid data format or missing fields"
+                }
+            
+            openapi_schema["paths"][path][method]["responses"]["500"] = {
+                "description": "Internal server error"
+            }
+            
+            if path.startswith("/auth"):
+                openapi_schema["paths"][path][method]["responses"]["401"] = {
+                    "description": "Invalid credentials"
+                }
+
+            if path.startswith("/auth"):
+                openapi_schema["paths"][path][method]["responses"]["400"] = {
+                    "description": "Bad request - invalid JSON or missing fields"
+                }
+            
             if not path.startswith("/auth") and path not in ["/", "/health", "/openapi.json", "/docs", "/redoc"]:
                 openapi_schema["paths"][path][method]["security"] = [{"Bearer": []}]
+                openapi_schema["paths"][path][method]["responses"]["401"] = {
+                    "description": "Not authenticated"
+                }
+                openapi_schema["paths"][path][method]["responses"]["403"] = {
+                    "description": "Not enough permissions"
+                }
+                openapi_schema["paths"][path][method]["responses"]["400"] = {
+                    "description": "Bad request - invalid data format"
+                }
+    
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -155,29 +188,3 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
-@app.get("/debug/config")
-def debug_config():
-    from app.config import settings
-    return {
-        "secret_key_preview": settings.SECRET_KEY[:10] + "...",  
-        "algorithm": settings.ALGORITHM,
-        "expire_minutes": settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        "cors_origins": settings.CORS_ORIGINS,
-        "database_url": settings.DATABASE_URL,
-        "password_salt_preview": settings.PASSWORD_SALT[:10] + "..."
-    }
-
-@app.get("/debug/instance")
-def get_instance():
-    return {
-        "hostname": socket.gethostname(),
-        "container_id": socket.gethostname()
-    }
-
-@app.get("/debug/sleep")
-async def sleep_test(seconds: int = 10):
-    """Тестовый эндпоинт для проверки graceful shutdown"""
-    logger.info("sleep_started", seconds=seconds)
-    await asyncio.sleep(seconds)
-    logger.info("sleep_completed")
-    return {"status": "ok", "slept": seconds}
