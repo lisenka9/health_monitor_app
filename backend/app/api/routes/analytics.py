@@ -10,7 +10,14 @@ from app.utils.validators import medical_validator
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
-@router.get("/measurements")
+@router.get(
+    "/measurements",
+    responses={
+        401: {"description": "Not authenticated"},
+        400: {"description": "Bad request - invalid date range"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_measurements_for_period(
     start_date: Optional[datetime] = Query(None, description="Start date for filtering"),
     end_date: Optional[datetime] = Query(None, description="End date for filtering"),
@@ -41,7 +48,13 @@ def get_measurements_for_period(
         "data": measurements
     }
 
-@router.get("/stats")
+@router.get(
+    "/stats",
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_measurements_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days for statistics"),
     current_user: User = Depends(get_current_user),
@@ -54,7 +67,13 @@ def get_measurements_stats(
         "stats": stats
     }
 
-@router.get("/dashboard")
+@router.get(
+    "/dashboard",
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_dashboard_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

@@ -9,7 +9,15 @@ from app.core.logging import get_logger
 router = APIRouter(prefix="/auth", tags=["authentication"])
 logger = get_logger("health-monitor.auth")
 
-@router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=User,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"description": "Email already registered or validation error"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def register(user_create: UserCreate, db: Session = Depends(get_db)):
     logger.info("user_registration_attempted", email=user_create.email)
     try:
@@ -25,7 +33,14 @@ def register(user_create: UserCreate, db: Session = Depends(get_db)):
             detail=f"Registration failed: {str(e)}"
         )
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    responses={
+        401: {"description": "Invalid credentials"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def login(user_login: UserLogin, db: Session = Depends(get_db)):
     logger.info("user_login_attempted", email=user_login.email)
     try:

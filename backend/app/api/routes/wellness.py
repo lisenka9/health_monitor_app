@@ -9,7 +9,15 @@ from app.repositories.wellness_repository import wellness_repository
 
 router = APIRouter(prefix="/api", tags=["wellness"])
 
-@router.post("/wellness", response_model=WellnessEntry, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/wellness",
+    response_model=WellnessEntry,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def create_wellness_entry(
     wellness_data: WellnessEntryCreate,
     current_user: User = Depends(get_current_user),
@@ -19,7 +27,14 @@ def create_wellness_entry(
     wellness_data_dict["user_id"] = current_user.id
     return wellness_repository.create(db, wellness_data_dict)
 
-@router.get("/wellness", response_model=List[WellnessEntry])
+@router.get(
+    "/wellness",
+    response_model=List[WellnessEntry],
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_wellness_history(
     skip: int = 0,
     limit: int = 100,
@@ -28,7 +43,15 @@ def get_wellness_history(
 ):
     return wellness_repository.get_by_user(db, current_user.id, skip, limit)
 
-@router.get("/wellness/{entry_id}", response_model=WellnessEntry)
+@router.get(
+    "/wellness/{entry_id}",
+    response_model=WellnessEntry,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"}
+    }
+)
 def get_wellness_entry(
     entry_id: int,
     current_user: User = Depends(get_current_user),
@@ -47,7 +70,16 @@ def get_wellness_entry(
         )
     return entry
 
-@router.put("/wellness/{entry_id}", response_model=WellnessEntry)
+@router.put(
+    "/wellness/{entry_id}",
+    response_model=WellnessEntry,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def update_wellness_entry(
     entry_id: int,
     wellness_data: WellnessEntryUpdate,
@@ -68,7 +100,15 @@ def update_wellness_entry(
     
     return wellness_repository.update(db, entry, wellness_data)
 
-@router.delete("/wellness/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/wellness/{entry_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"}
+    }
+)
 def delete_wellness_entry(
     entry_id: int,
     current_user: User = Depends(get_current_user),

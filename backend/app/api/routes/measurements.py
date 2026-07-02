@@ -17,7 +17,15 @@ from app.repositories.measurement_repository import (
 
 router = APIRouter(prefix="/api", tags=["measurements"])
 
-@router.post("/blood-pressure", response_model=BloodPressure, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/blood-pressure",
+    response_model=BloodPressure,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def create_blood_pressure(
     bp_data: BloodPressureCreate,
     current_user: User = Depends(get_current_user),
@@ -27,7 +35,14 @@ def create_blood_pressure(
     bp_data_dict["user_id"] = current_user.id
     return blood_pressure_repository.create(db, bp_data_dict)
 
-@router.get("/blood-pressure", response_model=List[BloodPressure])
+@router.get(
+    "/blood-pressure",
+    response_model=List[BloodPressure],
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_blood_pressure_history(
     skip: int = 0,
     limit: int = 100,
@@ -36,7 +51,16 @@ def get_blood_pressure_history(
 ):
     return blood_pressure_repository.get_by_user(db, current_user.id, skip, limit)
 
-@router.put("/blood-pressure/{id}", response_model=BloodPressure)
+@router.put(
+    "/blood-pressure/{id}",
+    response_model=BloodPressure,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def update_blood_pressure(
     id: int,
     bp_data: BloodPressureCreate,
@@ -57,7 +81,15 @@ def update_blood_pressure(
     
     return blood_pressure_repository.update(db, bp, bp_data)
 
-@router.delete("/blood-pressure/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/blood-pressure/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"}
+    }
+)
 def delete_blood_pressure(
     id: int,
     current_user: User = Depends(get_current_user),
@@ -78,7 +110,15 @@ def delete_blood_pressure(
     blood_pressure_repository.delete(db, id)
     return None
 
-@router.post("/blood-glucose", response_model=BloodGlucose, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/blood-glucose",
+    response_model=BloodGlucose,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def create_blood_glucose(
     bg_data: BloodGlucoseCreate,
     current_user: User = Depends(get_current_user),
@@ -88,7 +128,14 @@ def create_blood_glucose(
     bg_data_dict["user_id"] = current_user.id
     return blood_glucose_repository.create(db, bg_data_dict)
 
-@router.get("/blood-glucose", response_model=List[BloodGlucose])
+@router.get(
+    "/blood-glucose",
+    response_model=List[BloodGlucose],
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_blood_glucose_history(
     skip: int = 0,
     limit: int = 100,
@@ -97,7 +144,16 @@ def get_blood_glucose_history(
 ):
     return blood_glucose_repository.get_by_user(db, current_user.id, skip, limit)
 
-@router.put("/blood-glucose/{id}", response_model=BloodGlucose)
+@router.put(
+    "/blood-glucose/{id}",
+    response_model=BloodGlucose,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def update_blood_glucose(
     id: int,
     bg_data: BloodGlucoseCreate,
@@ -118,7 +174,15 @@ def update_blood_glucose(
     
     return blood_glucose_repository.update(db, bg, bg_data)
 
-@router.delete("/blood-glucose/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/blood-glucose/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"}
+    }
+)
 def delete_blood_glucose(
     id: int,
     current_user: User = Depends(get_current_user),
@@ -139,7 +203,15 @@ def delete_blood_glucose(
     blood_glucose_repository.delete(db, id)
     return None
 
-@router.post("/weight", response_model=Weight, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/weight",
+    response_model=Weight,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def create_weight(
     weight_data: WeightCreate,
     current_user: User = Depends(get_current_user),
@@ -149,7 +221,14 @@ def create_weight(
     weight_data_dict["user_id"] = current_user.id
     return weight_repository.create(db, weight_data_dict)
 
-@router.get("/weight", response_model=List[Weight])
+@router.get(
+    "/weight",
+    response_model=List[Weight],
+    responses={
+        401: {"description": "Not authenticated"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def get_weight_history(
     skip: int = 0,
     limit: int = 100,
@@ -158,7 +237,16 @@ def get_weight_history(
 ):
     return weight_repository.get_by_user(db, current_user.id, skip, limit)
 
-@router.put("/weight/{id}", response_model=Weight)
+@router.put(
+    "/weight/{id}",
+    response_model=Weight,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"},
+        422: {"description": "Validation error - invalid data format"}
+    }
+)
 def update_weight(
     id: int,
     weight_data: WeightCreate,
@@ -179,7 +267,15 @@ def update_weight(
     
     return weight_repository.update(db, weight, weight_data)
 
-@router.delete("/weight/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/weight/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"description": "Not authenticated"},
+        403: {"description": "Not enough permissions"},
+        404: {"description": "Not found"}
+    }
+)
 def delete_weight(
     id: int,
     current_user: User = Depends(get_current_user),

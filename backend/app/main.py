@@ -85,24 +85,15 @@ def custom_openapi():
             if "responses" not in openapi_schema["paths"][path][method]:
                 openapi_schema["paths"][path][method]["responses"] = {}
             
-            if method in ["POST", "PUT", "PATCH"]:
-                openapi_schema["paths"][path][method]["responses"]["422"] = {
-                    "description": "Validation error - invalid data format or missing fields"
-                }
-            
+            openapi_schema["paths"][path][method]["responses"]["400"] = {
+                "description": "Bad request - invalid data format, missing fields, or duplicate"
+            }
+            openapi_schema["paths"][path][method]["responses"]["422"] = {
+                "description": "Validation error - invalid data format or missing fields"
+            }
             openapi_schema["paths"][path][method]["responses"]["500"] = {
                 "description": "Internal server error"
             }
-            
-            if path.startswith("/auth"):
-                openapi_schema["paths"][path][method]["responses"]["401"] = {
-                    "description": "Invalid credentials"
-                }
-
-            if path.startswith("/auth"):
-                openapi_schema["paths"][path][method]["responses"]["400"] = {
-                    "description": "Bad request - invalid JSON or missing fields"
-                }
             
             if not path.startswith("/auth") and path not in ["/", "/health", "/openapi.json", "/docs", "/redoc"]:
                 openapi_schema["paths"][path][method]["security"] = [{"Bearer": []}]
@@ -112,12 +103,16 @@ def custom_openapi():
                 openapi_schema["paths"][path][method]["responses"]["403"] = {
                     "description": "Not enough permissions"
                 }
-                openapi_schema["paths"][path][method]["responses"]["400"] = {
-                    "description": "Bad request - invalid data format"
+            
+            if path.startswith("/auth"):
+                openapi_schema["paths"][path][method]["responses"]["401"] = {
+                    "description": "Invalid credentials"
                 }
     
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
+app.openapi = custom_openapi
 
 app.openapi = custom_openapi
 security = HTTPBearer(auto_error=False)

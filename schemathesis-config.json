@@ -1,0 +1,4 @@
+{
+  "checks": ["status_code", "content_type", "response_schema", "not_a_server_error", "expected_error"],
+  "exclude": ["unsupported_method"]
+}
