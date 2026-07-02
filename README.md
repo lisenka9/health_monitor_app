@@ -19,11 +19,17 @@
 *   Просмотр истории и фильтрация по дате.
 *   Визуализация динамики показателей на графиках.
 
+## Структура проекта
+
+- backend/ - серверная часть на FastAPI
+- frontend/ - клиентская часть на React
+- docker-compose.yml - файл для оркестрации контейнеров
+
 ## Быстрый старт
 
 1.  **Клонируйте репозиторий:**
     ```bash
-    git clone <ссылка на ваш репозиторий>
+    git clone https://github.com/lisenka9/health_monitor_app
     cd health_monitor_app
     ```
 
